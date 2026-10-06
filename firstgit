@@ -1,0 +1,280 @@
+#include <Adafruit_NeoPixel.h>
+
+// =========================
+// LED設定
+// =========================
+
+#define LED_PIN 9
+#define LED_PIN2 7
+
+#define NUM_LEDS 64
+#define NUM_LEDS2 64
+
+// D9側
+Adafruit_NeoPixel leds(
+  NUM_LEDS,
+  LED_PIN,
+  NEO_GRB + NEO_KHZ800
+);
+
+// D8側
+Adafruit_NeoPixel leds2(
+  NUM_LEDS2,
+  LED_PIN2,
+  NEO_GRB + NEO_KHZ800
+);
+
+
+// =========================
+// ウェーブ設定
+// =========================
+
+#define WAVE_WIDTH 10
+
+int center = 0;
+int direction = 1;
+bool waveMode = true;
+
+// =========================
+// 通常の色
+// =========================
+
+// D9
+void setColor1(uint8_t r, uint8_t g, uint8_t b) {
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds.setPixelColor(i, r, g, b);
+  }
+
+  leds.show();
+}
+
+
+// D8
+void setColor2(uint8_t r, uint8_t g, uint8_t b) {
+
+  for (int i = 0; i < NUM_LEDS2; i++) {
+    leds2.setPixelColor(i, r, g, b);
+  }
+
+  leds2.show();
+}
+
+
+// =========================
+// 水色ウェーブ
+// =========================
+
+void blueWave() {
+
+  // 全部消す
+  leds.clear();
+  leds2.clear();
+
+
+  // =========================
+  // D9側
+  // =========================
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+
+    int distance = abs(i - center);
+
+    if (distance < WAVE_WIDTH / 2) {
+
+      // 水色
+      leds.setPixelColor(
+        i,
+        0,
+        200,
+        255
+      );
+    }
+  }
+
+
+  // =========================
+  // D8側
+  // =========================
+
+  for (int i = 0; i < NUM_LEDS2; i++) {
+
+    int distance = abs(i - center);
+
+    if (distance < WAVE_WIDTH / 2) {
+
+      // 水色
+      leds2.setPixelColor(
+        i,
+        0,
+        200,
+        255
+      );
+    }
+  }
+
+
+  // LEDを表示
+  leds.show();
+  leds2.show();
+
+
+  // =========================
+  // ウェーブを移動
+  // =========================
+
+  center += direction;
+
+
+  // =========================
+  // 端まで行ったら反転
+  // =========================
+
+  if (center >= NUM_LEDS - WAVE_WIDTH / 2) {
+    direction = -1;
+  }
+
+  if (center <= WAVE_WIDTH / 2) {
+    direction = 1;
+  }
+
+
+  // =========================
+  // スピード
+  // =========================
+
+  delay(10);
+}
+
+//フラッシュ
+void randomFlash() {
+  unsigned long startTime = millis();
+
+  while (millis() - startTime < 4000) {  // 4秒間
+    int color = random(3);               // 0～2をランダム
+
+    if (color == 0) {
+      // 青
+      setColor1(0, 0, 255);
+      setColor2(0, 0, 255);
+    }
+    else if (color == 1) {
+      // 黄色
+      setColor1(255, 255, 0);
+      setColor2(255, 255, 0);
+    }
+    else {
+      // 白
+      setColor1(255, 255, 255);
+      setColor2(255, 255, 255);
+    }
+
+    delay(50);  // 50ms点灯
+
+    // 消灯
+    setColor1(0, 0, 0);
+    setColor2(0, 0, 0);
+
+    delay(50);  // 50ms消灯
+  }
+
+  // 最後に消灯
+  setColor1(0, 0, 0);
+  setColor2(0, 0, 0);
+   waveMode = true;
+}
+
+
+
+// =========================
+// 初期設定
+// =========================
+
+void setup() {
+
+  Serial.begin(115200);
+
+
+  // D9
+  leds.begin();
+  leds.setBrightness(255);
+  leds.clear();
+  leds.show();
+
+
+  // D8
+  leds2.begin();
+  leds2.setBrightness(255);
+  leds2.clear();
+  leds2.show();
+}
+
+
+// =========================
+// メイン処理
+// =========================
+
+void loop() {
+
+  // =========================
+  // シリアル通信を確認
+  // =========================
+
+  if (Serial.available() > 0) {
+
+    String data = Serial.readStringUntil('\n');
+    data.trim();
+
+    Serial.print("受信：");
+    Serial.println(data);
+
+
+    // =========================
+    // migi
+    // =========================
+
+    if (data == "migi") {
+
+      waveMode = false;
+
+      Serial.println("migi");
+
+      randomFlash();
+    }
+
+
+    // =========================
+    // hidari
+    // =========================
+
+    else if (data == "hidari") {
+
+      waveMode = false;
+
+      Serial.println("hidari");
+
+      randomFlash();
+    }
+
+
+    // =========================
+    // migi / hidari 以外
+    // =========================
+
+    else {
+
+      waveMode = true;
+
+      Serial.println("ウェーブ開始");
+    }
+  }
+
+
+  // =========================
+  // ウェーブ
+  // =========================
+
+  if (waveMode) {
+    blueWave();
+  }
+}
