@@ -1,4 +1,4 @@
-#define ENCODER_A 2
+#define ENCODER_A 11
 
 #define PPR 400
 
