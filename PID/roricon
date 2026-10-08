@@ -1,0 +1,43 @@
+#define ENCODER_A 2
+
+#define PPR 400
+
+//パルスを数える変数
+volatile long pulseCount = 0;
+
+unsigned long previousTime = 0;
+
+void encoderISR() {
+  pulseCount++; //パルスがきたら1ずつふやす
+}
+
+void setup() {
+    Serial.begin(9600);
+    pinMode(ENCODER_A, INPUT_PULLUP);
+
+    attachInterrupt(  //割り込みの設定
+        digitalPinToInterrupt(ENCODER_A), encoderISR,
+        RISING
+    );
+
+    previousTime = millis();
+
+}
+
+void loop() {
+
+    unsigned long currentTime = millis();
+
+    if (currentTime - previousTime >= 1000) { //1秒ごとに計算
+        noInterrupts(); //割り込みを停止
+        long pulses = pulseCount; //パルスの数をコピー
+        pulseCount = 0; //パルスの数をリセット
+        interrupts(); //割り込みを再開
+    }
+
+    float rpm = (float)pulses / PPR * 60.0; //RPMの計算
+    Serial.print("Pulse = ");
+    Serial.print(pulses);
+    Serial.print(" RPM = ");
+    Serial.println(rpm);    
+}
