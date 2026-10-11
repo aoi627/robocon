@@ -38,6 +38,7 @@ void setup() {
     //もたどらの設定
     pinMode(MOTER_DIR, OUTPUT);
     pinMode(MOTER_PWM, OUTPUT);
+    pinMode(LED, OUTPUT);
 
     //モータの回転方向を設定
     digitalWrite(MOTER_DIR, HIGH); //HIGHで正転、LOWで逆
@@ -81,7 +82,7 @@ void loop() {
 
 }
 
-if (error < 0){
+if (error > 0){
     digitalWrite(LED, HIGH); //誤差が負の時はLEDを点灯
 } else {
     digitalWrite(LED, LOW);
