@@ -1,6 +1,7 @@
 #define ENCODER_A 11
 #define MOTER_DIR 4
 #define MOTER_PWM 5
+#define LED 8
 
 #define PPR 400
 
@@ -79,4 +80,11 @@ void loop() {
     previousTime = currentTime;
 
 }
+
+if (error < 0){
+    digitalWrite(LED, HIGH); //誤差が負の時はLEDを点灯
+} else {
+    digitalWrite(LED, LOW);
+}
+
 }
