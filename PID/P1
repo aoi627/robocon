@@ -1,70 +1,125 @@
 #define ENCODER_A 11
 #define MOTER_DIR 4
 #define MOTER_PWM 5
-#define LED 8
+#define LED 9
 
 #define PPR 400
 
-//P制御設定
-float targetRPM = 100; //目標回転数
-float Kp = 2.0; //比例ゲイン
+// ==========================
+// PI制御設定
+// ==========================
+float targetRPM = 100;  // 目標回転数
+float Kp = 0.9;         // 比例ゲイン
+float Ki = 0.18;         // 積分ゲイン
 
-
-//パルスを数える変数
+// ==========================
+// エンコーダー設定
+// ==========================
 volatile long pulseCount = 0;
 
+// ==========================
+// 時間管理
+// ==========================
 unsigned long previousTime = 0;
 
-//P制御のための変数
+// ==========================
+// 制御用変数
+// ==========================
 float rpm = 0;
 float error = 0;
+float integral = 0;
 float pwm = 0;
+float dt = 0;
 
+// ==========================
+// エンコーダー割り込み
+// ==========================
 void encoderISR() {
-  pulseCount++; //パルスがきたら1ずつふやす
+  pulseCount++;
 }
 
+// ==========================
+// 初期設定
+// ==========================
 void setup() {
-    Serial.begin(9600);
-    pinMode(ENCODER_A, INPUT_PULLUP);
+  Serial.begin(9600);
 
-    attachInterrupt(  //割り込みの設定
-        digitalPinToInterrupt(ENCODER_A), encoderISR,
-        RISING
-    );
+  pinMode(ENCODER_A, INPUT_PULLUP);
 
-    previousTime = millis();
+  attachInterrupt(
+    digitalPinToInterrupt(ENCODER_A),
+    encoderISR,
+    RISING
+  );
 
-    //もたどらの設定
-    pinMode(MOTER_DIR, OUTPUT);
-    pinMode(MOTER_PWM, OUTPUT);
-    pinMode(LED, OUTPUT);
+  pinMode(MOTER_DIR, OUTPUT);
+  pinMode(MOTER_PWM, OUTPUT);
+  pinMode(LED, OUTPUT);
 
-    //モータの回転方向を設定
-    digitalWrite(MOTER_DIR, HIGH); //HIGHで正転、LOWで逆
+  digitalWrite(MOTER_DIR, HIGH);
 
-
-
+  previousTime = millis();
 }
 
+// ==========================
+// メイン処理
+// ==========================
 void loop() {
 
-    unsigned long currentTime = millis();
+  unsigned long currentTime = millis();
 
-    if (currentTime - previousTime >= 1000) { //1秒ごとに計算
-        noInterrupts(); //割り込みを停止
-        long pulses = pulseCount; //パルスの数をコピー
-        pulseCount = 0; //パルスの数をリセット
-        interrupts(); //割り込みを再開
-    
+  // 1秒ごとに計算
+  if (currentTime - previousTime >= 1000) {
 
-    rpm = (float)pulses / PPR * 60.0; //RPMの計算
-    error = targetRPM - rpm; //誤差の計算
-    pwm = Kp * error; //PWM出力の計算
+    // 経過時間を秒単位で計算
+    dt = (currentTime - previousTime) / 1000.0;
 
-    pwm = constrain(pwm, 0, 255); //PWM出力を0~255に制限
-    analogWrite(MOTER_PWM, (int)pwm); //PWM出力
+    // パルス数を安全に読み取る
+    noInterrupts();
+    long pulses = pulseCount;
+    pulseCount = 0;
+    interrupts();
 
+    // ==========================
+    // ① 回転数を計算
+    // ==========================
+    rpm = (float)pulses / PPR * 60.0;
+
+    // ==========================
+    // ② 誤差を計算
+    // ==========================
+    error = targetRPM - rpm;
+
+    // ==========================
+    // ③ I制御
+    // ==========================
+    integral += error * dt;
+
+    // 積分値が大きくなりすぎないように制限
+    integral = constrain(integral, -1000.0, 1000.0);
+
+    // ==========================
+    // ④ PI制御
+    // ==========================
+    pwm = Kp * error + Ki * integral;
+
+    // PWM出力を0～255に制限
+    pwm = constrain(pwm, 0.0, 255.0);
+
+    // モーターにPWM信号を送る
+    analogWrite(MOTER_PWM, (int)pwm);
+
+    // ==========================
+    // ⑤ LEDの明るさ
+    // ==========================
+    float brightness = abs(error) * 2.0;
+    brightness = constrain(brightness, 0.0, 255.0);
+
+    analogWrite(LED, (int)brightness);
+
+    // ==========================
+    // ⑥ 結果を表示
+    // ==========================
     Serial.print("Target RPM = ");
     Serial.print(targetRPM);
 
@@ -74,25 +129,13 @@ void loop() {
     Serial.print("   Error = ");
     Serial.print(error);
 
+    Serial.print("   Integral = ");
+    Serial.print(integral);
+
     Serial.print("   PWM = ");
     Serial.println(pwm);
-    
-    //時間更新
+
+    // 時間を更新
     previousTime = currentTime;
-
+  }
 }
-
-
-
-// LEDの明るさを計算
-float brightness = abs(error) * 2.0;
-
-// 明るさを0～255に制限
-brightness = constrain(brightness, 0.0, 255.0);
-
-// LEDの明るさを設定
-analogWrite(LED, (int)brightness);
-       
-
-}
-
