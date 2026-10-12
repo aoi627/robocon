@@ -90,13 +90,8 @@ float brightness = abs(error) * 2.0;
 // 明るさを0～255に制限
 brightness = constrain(brightness, 0.0, 255.0);
 
-// for文で明るさを徐々に上げる
-for (float i = 0.0; i <= brightness; i += 1.0) {
-    analogWrite(LED, (int)i);
-    delay(5);
-
-    
-}
+// LEDの明るさを設定
+analogWrite(LED, (int)brightness);
        
 
 }
